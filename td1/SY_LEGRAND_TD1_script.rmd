@@ -1,0 +1,232 @@
+---
+title: "TD1"
+author: "LEGRAND.Axel_SY.Abiboulaye"
+date: "15/09/2020"
+output: html_document
+---
+Ce TD est l'occasion de mettre en pratique ce qu'on a vu sur le cours de l'ACP. Nous commençons par importer les données de macdo avant d'afficher certains caractères de position des variables avec la fonction summary().On regarde de quoi est constitué le fichier avec la commande str.
+
+
+```{r}
+Data <- read.csv ("menu.csv")
+data_macdo <- as.data.frame(Data)
+#avoir une description du jeu de données avec la fonction str
+str(data_macdo)
+#summatry renvoie certaines caractères de position comme la moyenne, la médiane, le quantile d'ordre 1 et 3 des variables
+summary(data_macdo)
+```
+Nous constatons que les 3 premières colonnes sont des variables qualitatives(Factor) et les 21 colonnes suivantes sont des variables quantitatives discrètes(int) ou continues(num)
+
+#3. Comment pouvez-vous conclure sur la corrélation linéaire des deux variables Calories et Total.Fat ?
+Vérifions si les conditions mentionnées à la question  sont respectées
+
+##3.1 Testons la normalité du couple ( Calories,Total.Fat)
+
+```{r}
+library("MVN")
+result <- mvn(data =data_macdo[,c("Calories","Total.Fat")],
+           mvnTest="mardia",univariateTest="SW",
+           univariatePlot = "histogram",multivariatePlot ="qq",
+           multivariateOutlierMethod ="adj",showOutliers =TRUE, showNewData= TRUE)
+result$multivariateNormality
+```
+
+#Visualisons les valeurs atypiques
+```{r}
+result$multivariateOutliers
+```
+#On va voir à quoi correspond l'observation 83
+```{r}
+data_macdo[83,c("Item","Calories","Total.Fat")]
+```
+#3.2.Appliquons la fonction cor
+```{r}
+cor.test(data_macdo$Calories,data_macdo$Total.Fat)
+```
+#Question 4 :Comment testeriez-vous l’indépendance de variables explicatives quantitatives deux à deux ? Si vous avez une idée, pouvez-vous présenter vos résultats
+#sous forme de tableau pour les variables suivantes : Calories, Total.Fat,
+#Cholesterol, Sodium, Sugars et Protein ?
+```{r}
+library(ModStatR)
+#set.seed permet d'obtenir du code reproductible
+set.seed(1133)
+
+#utilisation du test de permutation
+r_c_mdo <- perm.cor.mtest(data_macdo[,c("Calories","Total.Fat","Cholesterol","Sodium",
+                                        "Sugars","Protein")], num.sim = 50000)
+lapply(r_c_mdo,round,4)
+```
+##Avec la méthode de correction de Bonferonni qui permet d'utiliser un seuil individuel égal à (5/nombres de test)% avec nombres de tests=15, on obtient le résultat suivant
+```{r}
+r_c_mdo$p < .05/(6*5/2)
+```
+##Utilisation de la fonction rquery.cormat pour afficher les valeurs
+```{r}
+source("http://www.sthda.com/upload/rquery_cormat.r")
+rquery.cormat(data_macdo[,c("Calories","Total.Fat","Cholesterol","Sodium",
+                            "Sugars","Protein")])$r
+```
+1.2 Corrélation linéaire entre deux variables quantitatives
+
+#Question 5 :Déterminez deux groupes de variables entre elles qui présentent des corrélations linéaires supérieures en valeur absolue à 0,5.
+
+
+```{r}
+listQ51 <- c("Protein", "Calories", "Total.Fat", "Sodium", "Cholesterol", "Saturated.Fat", "Total.Fat....Daily.Value.", "Cholesterol....Daily.Value.", "Saturated.Fat....Daily.Value.")
+listQ52 <- c("Sugars", "Calcium....Daily.Value.", "Carbohydrates")
+round(cor(data_macdo[, listQ51]), 2)
+round(cor(data_macdo[, listQ52]), 2)
+```
+##1.3 Représentation en 3 dimensions
+#Représentation en trois dimensions des attributs Calories, Total.Fat,Cholesterol
+```{r}
+library(rgl)
+plot3d(data_macdo$Calories,
++ data_macdo$Total.Fat,data_macdo$Cholesterol, type="s")
+
+```
+#Utilisation de la fonction scale pour centrer et réduire les données
+```{r}
+list <- c("Calories", "Total.Fat", "Cholesterol")
+data_macdo.cr <- scale(data_macdo[, list])
+lims <- c(min(data_macdo.cr),max(data_macdo.cr))
+plot3d(data_macdo.cr, type = "s", xlim = lims, ylim = lims,zlim = lims)
+```
+#Question 12
+# Affichez l’ellipse de corrélation linéaire dans la représentation en 3D pour les
+#attributs Sodium, Sugars et Protein
+```{r}
+listQ12 <- c("Sugars", "Sodium", "Protein")
+df.cr <- scale(data_macdo[, listQ12])
+lims <- c(min(df.cr), max(df.cr))
+plot3d(df.cr, type="s", xlim=lims, ylim=lims, zlim=lims)
+df2 <- as.data.frame(df.cr)
+plot3d(ellipse3d(cor(cbind(df2$Sugars, + df2$Sodium, df2$Protein))), col="grey", add=TRUE)
+```
+#Question 14: Que contient le dataframe tab
+Le dataframe tab visualisé en tapant acp$tab.
+```{r}
+library(ade4)
+acp <- dudi.pca(data_macdo[, list], center=TRUE, scale=TRUE,
+ scannf = FALSE, nf = 3)
+names(acp)
+head(acp$tab)
+```
+
+
+#Question 15
+a)On affiche les données de data_macdo.cr
+```{r}
+data_macdo.cr <- scale(data_macdo[,list])
+data_macdo.cr_df <- as.data.frame(data_macdo.cr)
+head(data_macdo.cr_df)
+```
+On voit que les données sont sensiblement égales. (voir le rapport pour plus d'explications)
+
+#Question 16 :Quelle manipulation devez-vous réaliser pour retrouver exactement le tableauutilisé dans dudi.pca() ?
+
+voir le rapport pour la manipulation
+```{r}
+
+head((data_macdo.cr_df[,list])*sqrt(260/259))
+```
+```{r}
+```
+#1.7  Conclusion
+##Question 34 :Utiliser la fonction scatter
+
+```{r}
+#Index des individus comme labels.
+library(rgl)
+library(ade4)
+#34. scatter() : renvoie une figure visuelle de synthèse de l'ACP
+scatter(acp)
+```
+#Question 35
+##35.14
+```{r}
+library(ade4)
+list2 <- c("Calories","Total.Fat","Cholesterol","Sodium","Sugars","Protein")
+acp1 <- dudi.pca(data_macdo[, list2], center=TRUE, scale=TRUE,
+ scannf = FALSE, nf = 6)
+head(acp1$tab)
+
+```
+##35.15: Comparez-le avec le tableau de données data_macdo.cr. Expliquez la légère
+différence.
+Dataframe data_macdo.cr avec les 6 variables de list2
+```{r}
+data_macdo.cr2 <- scale(data_macdo[,list2])
+data_macdo.cr_df2 <- as.data.frame(data_macdo.cr2)
+head(data_macdo.cr_df2)
+```
+##35.16 Quelle manipulation devez-vous réaliser pour retrouver exactement le tableaunutilisé dans dudi.pca() ?
+```{r}
+head((data_macdo.cr_df2[,list2])*sqrt(260/259))
+```
+##35.17 Que vaut le pourcentage de l’inertie total avec 3 axes ?
+```{r}
+inertie <- inertia.dudi(acp1, col.inertia=TRUE)
+inertie
+```
+##35.26 Le nombre d'axes retenus
+```{r}
+acp1$nf
+```
+
+##35.28 Attribut le moins représenté
+Cercle de corrélation des 6 variables
+
+```{r}
+s.corcircle(acp1$co, xax=1,yax=2)
+```
+Affichons les valeurs de cos2 par ordre croissant. 
+```{r}
+library(factoextra)
+round(sort(rowSums(get_pca_var(acp1)$cos2[,1:2])),2)
+```
+##35.30 Quels sont les attributs qui ont contribué à la construction de l’axe F1
+```{r}
+(inertie1 <-round(inertia.dudi(acp1 , col.inertia = TRUE)$col.abs,3))
+fviz_contrib(acp1,choice ="var",axes=1)
+```
+##35.31 Donner une signification à cet axe
+
+
+```{r}
+#Signed column relative contributions:
+round(inertia.dudi(acp1,col.inertia=TRUE)$col.rel, 3)
+
+#coordonnées des variables
+round(acp1$co,3)
+
+```
+##35.32 Quels sont les attributs qui ont contribué à la construction de l’axe F2 ?
+Justifiez votre réponse.
+```{r}
+fviz_contrib(acp1,choice ="var",axes=2)
+
+```
+##35.34 utilisation de scatter(acp1)
+```{r}
+scatter(acp1)
+```
+#Question 36
+
+```{r}
+#ACP en 2D avec classes colorées selon la catégorie de produit
+gcol <- c("red1", "red4", "orange", "yellow", "green", "blue","purple", "pink", "grey")
+s.class(dfxy = acp$li, fac = data_macdo$Category, col = gcol, xax = 1, yax = 2, label = NULL)
+str(data_macdo$Category)
+
+#obtenir la liste des catégories avec la fonction levels dans l'ordre alphabétique
+levels(as.factor(data_macdo$Category))
+```
+##36.35 Conclusion avec les six variables
+```{r}
+#ACP en 2D avec classes colorées selon la catégorie de produit
+gcol <- c("red1", "red4", "orange", "yellow", "green", "blue","purple", "pink", "grey")
+s.class(dfxy = acp1$li, fac = data_macdo$Category, col = gcol, xax = 1, yax = 2, label = NULL)
+str(data_macdo$Category)
+levels(as.factor(data_macdo$Category))
+```
